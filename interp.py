@@ -10,7 +10,14 @@ term project.
 '''
 from dataclasses import dataclass
 
-type Literal = int
+type Value = int | bool | Str
+
+@dataclass
+class Str():
+    value: str
+    def __str__(self) -> str:
+        return f"{self.value}"
+    
 
 type Expr = Or | And | Not | boolLit \
             | intLit | Add | Sub | Mul | Div | Neg \
@@ -123,4 +130,68 @@ class If:
         return f"(if {self.cond} then {self.then_branch} else {self.else_branch})"
 
 
+type Binding[V] = tuple[str,V]  # this tuple type is always a pair
+type Env[V] = tuple[Binding[V], ...] # this tuple type has arbitrary length 
 
+from typing import Any
+emptyEnv : Env[Any] = ()  # the empty environment has no bindings
+
+
+
+def extendEnv[V](name: str, value: V, env:Env[V]) -> Env[V]:
+    '''Return a new environment that extends the input environment env with a new binding from name to value'''
+    return ((name,value),) + env
+
+
+
+def lookupEnv[V](name: str, env: Env[V]) -> (V | None) :
+    '''Return the first value bound to name in the input environment env
+       (or raise an exception if there is no such binding)'''
+    # exercises2b.py shows a different implementation alternative
+    match env:
+        case ((n,v), *rest) :
+            if n == name:
+                return v
+            else:
+                return lookupEnv(name, rest) # type:ignore
+        case _ :
+            return None  
+        
+        
+
+class EvalError(Exception):
+    pass
+
+
+def eval(e: Expr) -> int :
+    return evalInEnv(emptyEnv, e)
+
+def evalInEnv(env: Env[int], e:Expr) -> int:
+    match e:
+        case Add(l,r):
+            return evalInEnv(env,l) + evalInEnv(env,r)
+        case Sub(l,r):
+            return evalInEnv(env,l) - evalInEnv(env,r)
+        case Mul(l,r):
+            lv = evalInEnv(env,l)
+            rv = evalInEnv(env,r)
+            return lv * rv
+        case Div(l,r):
+            lv = evalInEnv(env,l)
+            rv = evalInEnv(env,r)
+            if rv == 0:
+                raise EvalError("division by zero")
+            return lv // rv
+        case Neg(s):
+            return - (evalInEnv(env,s))
+        case Lit(i):
+            return i
+        case Name(n):
+            v = lookupEnv(n, env)
+            if v is None:
+                raise EvalError(f"unbound name {n}")
+            return v
+        case Let(n,d,b):
+            v = evalInEnv(env, d)
+            newEnv = extendEnv(n, v, env)
+            return evalInEnv(newEnv, b)
