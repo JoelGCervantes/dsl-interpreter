@@ -12,18 +12,40 @@ from dataclasses import dataclass
 
 type Literal = int
 
-type Expr = Or | And | Not | Lit(bool)
+type Expr = Or | And | Not | boolLit \
+            | intLit | Add | Sub | Mul | Div | Neg \
+            |  Let | Name
+
 
 @dataclass
 class Or():
-
-
-
-
-type Expr = Lit(int) | Add | Sub | Mul | Div | Neg 
+    left: Expr
+    right: Expr
+    def __str__(self) -> str:
+        # returns a string representation of the expression
+        return f"({self.left} or {self.right})"
 
 @dataclass
-class Lit(int):
+class And():
+    left: Expr
+    right: Expr
+    def __str__(self) -> str:
+        return f"({self.left} and {self.right})"
+
+@dataclass
+class Not():
+    subexpr: Expr
+    def __str__(self) -> str:
+        return f"(not {self.subexpr})"
+    
+class boolLit():
+    value: bool
+    def __str__(self) -> str:
+        return f"{self.value}"
+
+
+@dataclass
+class intLit():
     value: int
     def __str__(self) -> str:
         return f"{self.value}"
@@ -62,5 +84,18 @@ class Neg():
     def __str__(self) -> str:
         return f"(- {self.subexpr})"
     
+@dataclass
+class Let():
+    name: str
+    defexpr: Expr
+    bodyexpr: Expr
+    def __str__(self) -> str:
+        return f"(let {self.name} = {self.defexpr} in {self.bodyexpr})"
+    
+@dataclass
+class Name():
+    name:str
+    def __str__(self) -> str:
+        return self.name
 
 
