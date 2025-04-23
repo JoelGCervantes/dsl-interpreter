@@ -12,15 +12,19 @@ from dataclasses import dataclass
 
 type Literal = int
 
-type Expr = Or | And | Not | Lit
-
-
-
-type Expr = Lit | Add | Sub | Mul | Div | Neg 
+type Expr = Or | And | Not | Lit(bool)
 
 @dataclass
-class Lit():
-    value: Literal
+class Or():
+
+
+
+
+type Expr = Lit(int) | Add | Sub | Mul | Div | Neg 
+
+@dataclass
+class Lit(int):
+    value: int
     def __str__(self) -> str:
         return f"{self.value}"
 
