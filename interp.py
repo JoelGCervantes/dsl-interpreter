@@ -17,12 +17,17 @@ class Str():
     value: str
     def __str__(self) -> str:
         return f"{self.value}"
-    
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Str):
+            return self.value == other.value
+        return False
+
 
 type Expr = Or | And | Not | boolLit \
             | intLit | Add | Sub | Mul | Div | Neg \
             |  Let | Name \
-            | Eq | Lt | If
+            | Eq | Lt | If \
+            | strLit | Concat | Length
 
 
 @dataclass
@@ -108,13 +113,13 @@ class Name():
         return self.name
 
 @dataclass
-class Eq:
+class Eq: # equality 
     left: Expr
     right: Expr
     def __str__(self) -> str:
         return f"({self.left} == {self.right})"
 
-@dataclass
+@dataclass # less than 
 class Lt:
     left: Expr
     right: Expr
@@ -122,12 +127,31 @@ class Lt:
         return f"({self.left} < {self.right})"
 
 @dataclass
-class If:
+class If: # if expression 
     cond: Expr
     then_branch: Expr
     else_branch: Expr
     def __str__(self) -> str:
         return f"(if {self.cond} then {self.then_branch} else {self.else_branch})"
+
+@dataclass
+class strLit():
+    value: str
+    def __str__(self) -> str:
+        return f"{self.value}"
+
+@dataclass
+class Concat():
+    left: Expr
+    right: Expr
+    def __str__(self) -> str:
+        return f"({self.left} + {self.right})"
+
+@dataclass
+class Length():
+    subexpr: Expr
+    def __str__(self) -> str:
+        return f"(length {self.subexpr})"
 
 
 type Binding[V] = tuple[str,V]  # this tuple type is always a pair
@@ -163,11 +187,13 @@ class EvalError(Exception):
     pass
 
 
-def eval(e: Expr) -> int :
+def eval(e: Expr) -> Value:
     return evalInEnv(emptyEnv, e)
 
-def evalInEnv(env: Env[int], e:Expr) -> int:
+def evalInEnv(env: Env[Value], e:Expr) -> Value:
     match e:
+        case Or(l,r):
+            return evalInEnv(env,l) or evalInEnv(env,r)
         case Add(l,r):
             return evalInEnv(env,l) + evalInEnv(env,r)
         case Sub(l,r):
