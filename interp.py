@@ -14,7 +14,8 @@ type Literal = int
 
 type Expr = Or | And | Not | boolLit \
             | intLit | Add | Sub | Mul | Div | Neg \
-            |  Let | Name
+            |  Let | Name \
+            | Eq | Lt | If
 
 
 @dataclass
@@ -38,6 +39,7 @@ class Not():
     def __str__(self) -> str:
         return f"(not {self.subexpr})"
     
+@dataclass
 class boolLit():
     value: bool
     def __str__(self) -> str:
@@ -97,5 +99,28 @@ class Name():
     name:str
     def __str__(self) -> str:
         return self.name
+
+@dataclass
+class Eq:
+    left: Expr
+    right: Expr
+    def __str__(self) -> str:
+        return f"({self.left} == {self.right})"
+
+@dataclass
+class Lt:
+    left: Expr
+    right: Expr
+    def __str__(self) -> str:
+        return f"({self.left} < {self.right})"
+
+@dataclass
+class If:
+    cond: Expr
+    then_branch: Expr
+    else_branch: Expr
+    def __str__(self) -> str:
+        return f"(if {self.cond} then {self.then_branch} else {self.else_branch})"
+
 
 
