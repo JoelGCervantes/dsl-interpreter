@@ -23,8 +23,8 @@ class Str():
         return False
 
 
-type Expr = Or | And | Not | boolLit \
-            | intLit | Add | Sub | Mul | Div | Neg \
+type Expr = Or | And | Not | Lit \
+            | Add | Sub | Mul | Div | Neg \
             |  Let | Name \
             | Eq | Lt | If \
             | Concat | Length
@@ -52,17 +52,10 @@ class Not():
         return f"(not {self.subexpr})"
     
 @dataclass
-class boolLit():
-    value: bool
-    def __str__(self) -> str:
-        return f"{self.value}"
-
-
-@dataclass
-class intLit():
-    value: int
-    def __str__(self) -> str:
-        return f"{self.value}"
+class Lit():
+    value: Value
+    def __str__(self) -> str: 
+        return str(self.value)
 
 @dataclass
 class Add():
@@ -189,58 +182,77 @@ def evalInEnv(env: Env[Value], e:Expr) -> Value:
     match e:
         # boolean expression forms
         case Or(l,r):
-            lv, rv = evalInEnv(env,l), evalInEnv(env,r)
-            if isinstance(lv, bool) and isinstance(rv, bool):
-                return lv or rv
-            else:
-                raise EvalError(f"or operator requires two boolean operands, but got {l} and {r}")
+            lv = evalInEnv(env,l)
+            if type(lv) is not bool:
+                raise EvalError(f"or operator requires a boolean operand, but got {l}")
+            if lv:
+                return True
+            rv = evalInEnv(env,r)
+            if type(rv) is not bool:
+                raise EvalError(f"or operator requires a boolean operand, but got {r}")
+            return rv
         case And(l,r):
-            lv, rv = evalInEnv(env,l), evalInEnv(env,r)
-            if isinstance(lv, bool) and isinstance(rv, bool):
-                return lv and rv
-            else:
-                raise EvalError(f"and operator requires two boolean operands, but got {l} and {r}")
+            lv= evalInEnv(env,l)
+            if type(lv) is not bool:
+                raise EvalError(f"and operator requires a boolean operand, but got {l}")
+            if not lv:
+                return False
+
+            rv = evalInEnv(env,r)
+            if type(rv) is not bool:
+                raise EvalError(f"and operator requires a boolean operand, but got {r}")
+            return rv
         case Not(s):
+            i = evalInEnv(env,s)
+            if type(i) is not bool:
+                raise EvalError(f"not operator requires a boolean operand, but got {s}")
+            return not i
+            '''
             sv = evalInEnv(env,s)
             if isinstance(sv, bool):
                 return not sv
             else:
                 raise EvalError(f"not operator requires a boolean operand, but got {s}")
+            '''
             
         # arithmetic(int) expression forms
         case Add(l,r):
-            lv, rv = evalInEnv(env,l), evalInEnv(env,r)
-            if isinstance(lv, int) and isinstance(rv, int):
+            lv = evalInEnv(env,l)
+            rv = evalInEnv(env,r)
+            if type(lv) is int and type(rv) is int:
                 return lv + rv
-            elif isinstance(lv, Str) and isinstance(rv, Str):
-                return Str(lv.value + rv.value)
             else:
-                raise EvalError(f"add operator requires two integer or string operands, but got {l} and {r}")
+                raise EvalError("addition of non-integers")
         case Sub(l,r):
-            lv, rv = evalInEnv(env,l), evalInEnv(env,r)
-            if isinstance(lv, int) and isinstance(rv, int):
+            lv = evalInEnv(env,l)
+            rv = evalInEnv(env,r)
+            if type(lv) is int and type(rv) is int:
                 return lv - rv
             else:
-                raise EvalError(f"sub operator requires two integer operands, but got {l} and {r}")
+                raise EvalError("subtraction of non-integers")
         case Mul(l,r):
-            lv, rv = evalInEnv(env,l), evalInEnv(env,r)
-            if isinstance(lv, int) and isinstance(rv, int):
+            lv = evalInEnv(env,l)
+            rv = evalInEnv(env,r)
+            if type(lv) is int and type(rv) is int:
                 return lv * rv
             else:
-                raise EvalError(f"mul operator requires two integer operands, but got {l} and {r}")
+                raise EvalError("multiplication of non-integers")
         case Div(l,r):
             lv = evalInEnv(env,l)
             rv = evalInEnv(env,r)
-            if rv == 0:
-                raise EvalError("division by zero")
-            if isinstance(lv, int) and isinstance(rv, int):
-                return lv // rv
+            if type(lv) is int and type(rv) is int:
+                if rv == 0:
+                    raise EvalError("division by zero")
+                else:
+                    return lv // rv
+            else:
+                raise EvalError("division of non-integers")
         case Neg(s):
             sv = evalInEnv(env,s)
-            if isinstance(sv, int):
+            if type(sv) is int:
                 return -sv
             else:
-                raise EvalError(f"neg operator requires an integer operand, but got {s}")
+                raise EvalError(f"negation operator requires an integer operand, but got {s}")
 
         # binding/variable forms 
         case Name(n):
@@ -255,18 +267,13 @@ def evalInEnv(env: Env[Value], e:Expr) -> Value:
 
         # comparison forms
         case Eq(l,r):
-            lv, rv = evalInEnv(env,l), evalInEnv(env,r)
-            if isinstance(lv, bool) and isinstance(rv, bool):
-                return lv == rv
-            elif isinstance(lv, int) and isinstance(rv, int):
-                return lv == rv
-            elif isinstance(lv, Str) and isinstance(rv, Str):
-                return lv == rv
-            else:
-                raise EvalError(f"eq operator requires two operands of the same type, but got {l} and {r}")
+            lv, rv = evalInEnv(env, l), evalInEnv(env, r)
+            if type(lv) != type(rv):
+                return False
+            return lv == rv
         case Lt(l,r):
             lv, rv = evalInEnv(env,l), evalInEnv(env,r)
-            if isinstance(lv, int) and isinstance(rv, int):
+            if type(lv) is int and type(rv) is int:
                 return lv < rv
             else:
                 raise EvalError(f"lt operator requires two integer operands, but got {l} and {r}")
@@ -274,7 +281,7 @@ def evalInEnv(env: Env[Value], e:Expr) -> Value:
         # conditional forms
         case If(cond, then_branch, else_branch):
             condv = evalInEnv(env, cond)
-            if isinstance(condv, bool):
+            if type(condv) is bool:
                 if condv:
                     return evalInEnv(env, then_branch)
                 else:
@@ -282,23 +289,19 @@ def evalInEnv(env: Env[Value], e:Expr) -> Value:
             else:
                 raise EvalError(f"if operator requires a boolean condition, but got {cond}")
         # literals
-        case boolLit(v):
-            return v
-        case intLit(v):
-            return v
-        case Str(v):
-            return Str(v)
-        
+        case Lit(v):
+            return v     
+     
         # string operator forms 
         case Concat(l,r):
             lv, rv = evalInEnv(env,l), evalInEnv(env,r)
-            if isinstance(lv, Str) and isinstance(rv, Str):
+            if type(lv) is Str and type(rv) is Str:
                 return Str(lv.value + rv.value)
             else:
                 raise EvalError(f"concat operator requires two string operands, but got {l} and {r}")
         case Length(s):
             sv = evalInEnv(env,s)
-            if isinstance(sv, Str):
+            if type(sv) is Str:
                 return len(sv.value)
             else:
                 raise EvalError(f"length operator requires a string operand, but got {s}")
