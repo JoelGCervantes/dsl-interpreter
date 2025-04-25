@@ -106,21 +106,21 @@ class Name():
         return self.name
 
 @dataclass
-class Eq: # equality 
+class Eq(): # equality 
     left: Expr
     right: Expr
     def __str__(self) -> str:
         return f"({self.left} == {self.right})"
 
 @dataclass # less than 
-class Lt:
+class Lt():
     left: Expr
     right: Expr
     def __str__(self) -> str:
         return f"({self.left} < {self.right})"
 
 @dataclass
-class If: # if expression 
+class If(): # if expression 
     cond: Expr
     then_branch: Expr
     else_branch: Expr
@@ -136,10 +136,12 @@ class Concat():
         return f"({self.left} + {self.right})"
 
 @dataclass
-class Length():
-    subexpr: Expr
-    def __str__(self) -> str:
-        return f"(length {self.subexpr})"
+class Replace():
+    target: Expr
+    old: Expr
+    new: Expr 
+    def __str__(self): return f"replace({self.target}, {self.old}, {self.new})"
+
 
 
 type Binding[V] = tuple[str,V]  # this tuple type is always a pair
@@ -299,11 +301,10 @@ def evalInEnv(env: Env[Value], e:Expr) -> Value:
                 return Str(lv.value + rv.value)
             else:
                 raise EvalError(f"concat operator requires two string operands, but got {l} and {r}")
-        case Length(s):
-            sv = evalInEnv(env,s)
-            if type(sv) is Str:
-                return len(sv.value)
-            else:
-                raise EvalError(f"length operator requires a string operand, but got {s}")
+        case Replace(target, old, new):
+            target, old, new = evalInEnv(env, target), evalInEnv(env, old), evalInEnv(env, new)
+            if not all(isinstance(x, Str) for x in (target, old, new)):
+                raise EvalError("Replace requires strings")
+            return Str(target.value.replace(old.value, new.value, 1))
         case _:
             raise EvalError(f"unknown expression {e}")
