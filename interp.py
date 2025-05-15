@@ -10,7 +10,7 @@ term project.
 '''
 from dataclasses import dataclass
 
-type Value = int | bool | Str
+type Value = int | bool | Str | Closure
 
 @dataclass
 class Str():
@@ -27,7 +27,8 @@ type Expr = Or | And | Not | Lit \
             | Add | Sub | Mul | Div | Neg \
             |  Let | Name \
             | Eq | Lt | If \
-            | Concat | Replace
+            | Concat | Replace \
+            | LetFun | App
 
 
 @dataclass
@@ -142,6 +143,27 @@ class Replace():
     new: Expr 
     def __str__(self): return f"replace({self.target}, {self.old}, {self.new})"
 
+@dataclass
+class LetFun():
+    name: str
+    param: str
+    funbody: Expr
+    letbody: Expr
+    def __str__(self):
+        return f"(letfun {self.name}({self.param}) = {self.funbody} in {self.letbody})"
+
+@dataclass
+class App():
+    funexpr: Expr
+    actualarg: Expr
+    def __str__(self):
+        return f"({self.funexpr} {self.actualarg})"
+
+@dataclass
+class Closure():
+    param: str
+    body: Expr
+    env: Env[Value]
 
 
 type Binding[V] = tuple[str,V]  # this tuple type is always a pair
@@ -306,5 +328,16 @@ def evalInEnv(env: Env[Value], e:Expr) -> Value:
             if not all(isinstance(x, Str) for x in (target, old, new)):
                 raise EvalError("Replace requires strings")
             return Str(target.value.replace(old.value, new.value, 1))
+        case LetFun(name, param, funbody, letbody):
+            clo = Closure(param, funbody, env)
+            newEnv = extendEnv(name, clo, env)
+            return evalInEnv(newEnv, letbody)
+        case App(funexpr, actualarg):
+            funval = evalInEnv(env, funexpr)
+            if not isinstance(funval, Closure):
+                raise EvalError(f"application of non-function {funexpr}")
+            argval = evalInEnv(env, actualarg)
+            newEnv = extendEnv(funval.param, argval, funval.env)
+            return evalInEnv(newEnv, funval.body)
         case _:
             raise EvalError(f"unknown expression {e}")
