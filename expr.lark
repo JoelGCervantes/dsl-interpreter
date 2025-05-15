@@ -1,0 +1,60 @@
+// Grammar for extended language with string ops and without terminal priority magic
+
+ID: /[A-Za-z_][A-Za-z0-9_]*/
+
+%import common.INT -> INT
+%import common.ESCAPED_STRING -> STRING
+%import common.WS
+%ignore WS
+
+// Top-level expression (lowest precedence): if-expression or disjunction
+?expr: "if" expr "then" expr "else" expr -> if
+     | or_expr
+
+// Boolean OR
+?or_expr: or_expr "||" and_expr   -> or
+        | and_expr
+
+// Boolean AND
+?and_expr: and_expr "&&" not_expr -> and
+         | not_expr
+
+// Boolean NOT (high precedence)
+?not_expr: "!" not_expr           -> not
+         | rel_expr
+
+// Relational operators: non-associative
+?rel_expr: concat_expr "==" concat_expr -> eq
+         | concat_expr "<" concat_expr  -> lt
+         | concat_expr
+
+// String concatenation
+?concat_expr: concat_expr "++" sum_expr -> concat
+            | sum_expr
+
+// Addition and subtraction
+?sum_expr: sum_expr "+" term   -> plus
+         | sum_expr "-" term   -> minus
+         | term
+
+// Multiplication and division
+?term: term "*" factor -> times
+     | term "/" factor -> divide
+     | factor
+
+// Unary minus
+?factor: "-" factor    -> neg
+       | app_expr
+
+// Function application
+?app_expr: app_expr "(" expr ")" -> app
+         | atom
+
+// Atoms: literals, identifiers, parenthesized expressions, bindings, strings
+?atom: ID                             -> id
+     | INT                            -> int
+     | STRING                         -> string
+     | "replace" "(" expr "," expr "," expr ")" -> replace
+     | "(" expr ")"    
+     | "let" ID "=" expr "in" expr "end" -> let
+     | "letfun" ID "(" ID ")" "=" expr "in" expr "end" -> letfun

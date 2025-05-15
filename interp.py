@@ -147,23 +147,17 @@ class Replace():
 class LetFun():
     name: str
     param: str
-    funbody: Expr
-    letbody: Expr
-    def __str__(self):
-        return f"(letfun {self.name}({self.param}) = {self.funbody} in {self.letbody})"
+    bodyexpr: Expr
+    inexpr: Expr
+    def __str__(self) -> str:
+        return f"letfun {self.name} ({self.param}) = {self.bodyexpr} in {self.inexpr} end"
 
 @dataclass
 class App():
-    funexpr: Expr
-    actualarg: Expr
-    def __str__(self):
-        return f"({self.funexpr} {self.actualarg})"
-
-@dataclass
-class Closure():
-    param: str
-    body: Expr
-    env: Env[Value]
+    fun: Expr
+    arg: Expr
+    def __str__(self) -> str:
+        return f"({self.fun} ({self.arg}))"
 
 
 type Binding[V] = tuple[str,V]  # this tuple type is always a pair
@@ -172,7 +166,11 @@ type Env[V] = tuple[Binding[V], ...] # this tuple type has arbitrary length
 from typing import Any
 emptyEnv : Env[Any] = ()  # the empty environment has no bindings
 
-
+@dataclass
+class Closure:
+    param: str
+    body: Expr
+    env: Env[Value]
 
 def extendEnv[V](name: str, value: V, env:Env[V]) -> Env[V]:
     '''Return a new environment that extends the input environment env with a new binding from name to value'''
@@ -328,16 +326,17 @@ def evalInEnv(env: Env[Value], e:Expr) -> Value:
             if not all(isinstance(x, Str) for x in (target, old, new)):
                 raise EvalError("Replace requires strings")
             return Str(target.value.replace(old.value, new.value, 1))
-        case LetFun(name, param, funbody, letbody):
-            clo = Closure(param, funbody, env)
-            newEnv = extendEnv(name, clo, env)
-            return evalInEnv(newEnv, letbody)
-        case App(funexpr, actualarg):
-            funval = evalInEnv(env, funexpr)
-            if not isinstance(funval, Closure):
-                raise EvalError(f"application of non-function {funexpr}")
-            argval = evalInEnv(env, actualarg)
-            newEnv = extendEnv(funval.param, argval, funval.env)
-            return evalInEnv(newEnv, funval.body)
+        case LetFun(n,p,b,i):
+            c = Closure(p,b,env)
+            newEnv = extendEnv(n,c,env)
+            c.env = newEnv        
+            return evalInEnv(newEnv,i)
+        case App(f,a):
+            fun = evalInEnv(env,f)
+            arg = evalInEnv(env,a)
+            match fun:
+                case Closure(p,b,cenv):
+                    newEnv = extendEnv(p,arg,cenv) 
+                    return evalInEnv(newEnv,b)
         case _:
             raise EvalError(f"unknown expression {e}")
