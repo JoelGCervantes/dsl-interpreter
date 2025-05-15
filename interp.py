@@ -27,7 +27,7 @@ type Expr = Or | And | Not | Lit \
             | Add | Sub | Mul | Div | Neg \
             |  Let | Name \
             | Eq | Lt | If \
-            | Concat | Length
+            | Concat | Replace
 
 
 @dataclass
