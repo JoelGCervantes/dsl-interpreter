@@ -28,7 +28,7 @@ type Expr = Or | And | Not | Lit \
             |  Let | Name \
             | Eq | Lt | If \
             | Concat | Replace \
-            | LetFun | App
+            | Letfun | App
 
 
 @dataclass
@@ -144,7 +144,7 @@ class Replace():
     def __str__(self): return f"replace({self.target}, {self.old}, {self.new})"
 
 @dataclass
-class LetFun():
+class Letfun():
     name: str
     param: str
     bodyexpr: Expr
@@ -326,7 +326,7 @@ def evalInEnv(env: Env[Value], e:Expr) -> Value:
             if not all(isinstance(x, Str) for x in (target, old, new)):
                 raise EvalError("Replace requires strings")
             return Str(target.value.replace(old.value, new.value, 1))
-        case LetFun(n,p,b,i):
+        case Letfun(n,p,b,i):
             c = Closure(p,b,env)
             newEnv = extendEnv(n,c,env)
             c.env = newEnv        
